@@ -7,6 +7,7 @@
 #include <iomanip>
 #include <format>
 #include <fstream>
+#include <nlohmann/json.hpp>
 
 /*
     TODO:
@@ -16,6 +17,7 @@
 */
 
 using namespace std;
+using nlohmann::json;
 
 struct expense {
     double amount;
@@ -24,7 +26,36 @@ struct expense {
 
 };
 vector<expense> expenses = {};
-string currency; 
+
+double getTotal() {
+    double total = 0;
+    for (int id = 0; id < expenses.size(); id++) {
+        total += expenses[id].amount;
+    }
+    return total;
+}
+
+string getCurrency() {
+    ifstream f("config.json");
+    json data = json::parse(f);
+    return data["currency"];
+}
+
+void setConfig(string key, string value) {
+    fstream f;
+    f.open("config.json", ios::in);
+    if (!f.is_open()) {
+        cerr << "Error opening config file.";
+    }
+    json data = json::parse(f);
+    f.close();
+    data[key] = value;
+    string newData = data.dump();
+
+    f.open("config.json", ios::out | ios::trunc);
+    f << newData;
+    f.close();
+}
 
 void addExpense() {
     string name; double amount; string input_amount;
@@ -39,15 +70,15 @@ void addExpense() {
 }
 
 void viewExpenses() { 
-
+    string currency = getCurrency();
     // display table rows
     cout << left
-    << setw(6) << "ID"
+    << setw(7) << "ID"
     << setw(22) << "Date and Time"
     << setw(20) << "Name" 
     << setw(14) << ("Amount (" + currency + ")")
     << "\n";
-    cout << string(62, '-') << "\n"; 
+    cout << string(63, '-') << "\n"; 
 
     
 
@@ -62,6 +93,10 @@ void viewExpenses() {
         << setw(14) << (format("{:.2f}", expenses[id].amount) + currency)
         << "\n";
     }
+
+    // display total
+    cout << string(63, '-') << "\n";
+    cout << left << setw(7) << "TOTAL: " << getTotal() << currency << "\n"; 
 }
 
 void listCurrencies() {
@@ -99,11 +134,58 @@ void listCurrencies() {
     currencyfile.close();
 }
 
+void setCurrency() {
+    string new_code;
+    cout << "Enter currency code: ";
+    getline(cin, new_code);
+    ifstream currencyFile;
+    currencyFile.open("currencies.csv");
+
+    if (!currencyFile.is_open()) {
+        cerr << "Currency list cannot be obtained.\n";
+        return;
+    }
+
+
+    string line;
+    while (getline(currencyFile, line)) {
+        
+        stringstream ss(line);
+        string cell;
+
+        int i = 0;
+        string values[3];
+        while (getline(ss, cell, ',')) {
+            values[i] = cell;
+            i++;
+        }
+        if (values[0] == new_code) {
+            setConfig("currency", values[2]);
+            cout << "Currency set to: " << new_code << " (" << values[2] << ")\n";
+            return;
+        }
+    }
+    cout << "Currency code not found. Use currency list to view supported currencies.\n";
+    return;
+
+}
+
+void help() {
+    cout <<
+    "help - displays help\n" << 
+    "add - add an expense\n" <<
+    "rm - removes an expense (id)\n" <<
+    "view - displays all expenses\n" <<
+    "total - sums up all expenses\n" <<
+    "exit - exit\n";
+}
+
 unordered_map<string, function<void()>> commands = {
     {"add", addExpense},
     {"view", viewExpenses},
-    {"currency list", listCurrencies}//,
-    //{"currency set", setCurrency}
+    {"currency list", listCurrencies},
+    {"help", help},
+    {"currency set", setCurrency}
 };
 
 
@@ -119,6 +201,7 @@ unordered_map<string, function<void()>> commands = {
 
 int main() {
     cout << "Expense tracker v0.2.0 -- Enter \"help\" for help.\n";
+    cout << "Currency: " << getCurrency() << "\n";
     string command ;
     while (command != "exit") {
         cout << "$exp> ";
