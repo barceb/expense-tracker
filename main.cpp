@@ -11,9 +11,8 @@
 
 /*
     TODO:
-    remove global variable expenses
-    currency handling
-    add total to budget
+    fix view alignment
+    automatically create new config file if not existing
 */
 
 using namespace std;
@@ -70,19 +69,25 @@ void addExpense() {
 }
 
 void viewExpenses() { 
+    int maxid = expenses.size();
+    if (maxid <= 0) {
+        cout << "There are no expenses.\n";
+        return;
+    }
+    
     string currency = getCurrency();
     // display table rows
     cout << left
     << setw(7) << "ID"
     << setw(22) << "Date and Time"
     << setw(20) << "Name" 
-    << setw(14) << ("Amount (" + currency + ")")
+    << setw(14) << ("Amount")
     << "\n";
     cout << string(63, '-') << "\n"; 
 
     
 
-    for (int id = 0; id < expenses.size(); id++) {
+    for (int id = 0; id < maxid; id++) {
         // time_t to human format
         tm* date = localtime(&expenses[id].timestamp);
         // display info of expense
@@ -97,6 +102,59 @@ void viewExpenses() {
     // display total
     cout << string(63, '-') << "\n";
     cout << left << setw(7) << "TOTAL: " << getTotal() << currency << "\n"; 
+}
+
+void removeExpense() {
+    string id_input;
+    int maxid = expenses.size();
+    if (maxid <= 0) {
+        cout << "There are no expenses.\n";
+        return;
+    }
+    cout << "Enter expense ID (1-" << maxid << ")\n";
+    getline(cin, id_input);
+
+    int id = stoi(id_input);
+    if (id > maxid) {
+        cout << "Expense ID is not in range.";
+        return;
+    }
+
+    // display expense to be removed
+    cout << "Remove this expense?: (y/n)\n";
+
+    string currency = getCurrency();
+
+    // display table rows
+    cout << left
+    << setw(7) << "ID"
+    << setw(22) << "Date and Time"
+    << setw(20) << "Name" 
+    << setw(14) << ("Amount")
+    << "\n";
+    cout << string(63, '-') << "\n"; 
+
+
+    // time_t to human format
+    tm* date = localtime(&expenses[id].timestamp);
+    cout << left
+        << setw(6) << id
+        << put_time(date, "%Y.%m.%d %H:%M:%S") << "   " // whitespace for alignment 
+        << setw(20) << expenses[id-1].name
+        << setw(14) << (format("{:.2f}", expenses[id-1].amount) + currency)
+        << "\n";
+    
+    string confirm_input;
+    char confirm;
+    getline(cin, confirm_input);
+    confirm = confirm_input[0];
+    if (confirm == 'y' || confirm == 'Y') {
+        expenses.erase(expenses.begin() + id - 1);
+        cout << "The expense has been successfully removed.\n";
+    } else {
+        cout << "No expenses have been removed.\n";
+    }
+
 }
 
 void listCurrencies() {
@@ -183,6 +241,7 @@ void help() {
 unordered_map<string, function<void()>> commands = {
     {"add", addExpense},
     {"view", viewExpenses},
+    {"remove", removeExpense},
     {"currency list", listCurrencies},
     {"help", help},
     {"currency set", setCurrency}
